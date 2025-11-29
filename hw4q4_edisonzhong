@@ -1,0 +1,103 @@
+#q 4
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+# 4(a) Read the data files
+members <- read.csv("C:\\Users\\rawre\\Downloads\\rollcall-members.csv")
+votes <- read.csv("C:\\Users\\rawre\\Downloads\\rollcall-votes.csv")
+
+# take look at data
+head(votes)
+head(members)
+head(votes[, 1:10])
+# -1 means 'nay', +1 means 'yea', 0 means 'abstained'
+
+# 4(b) PCA with K = 10 and analyze results
+
+# prepare voting data for PCA (remove any non-vote columns if present)
+# assumes the first column might be identifiers
+vote_matrix <- as.matrix(votes[, -1]) # remove first column if it's identifiers
+
+# Run PCA with 10 components
+pca_result <- prcomp(vote_matrix, center = TRUE, scale. = TRUE, rank. = 10)
+
+# scree plot
+plot(pca_result, main = "Scree Plot for Congressional Votes PCA")
+
+# proportion of variance explained
+summary_pca <- summary(pca_result)
+print(summary_pca)
+
+# extract variance explained by first two components
+var_explained <- summary_pca$importance[2, ] # Proportion of Variance row
+cat("Variance explained by PC1:", round(var_explained[1]*100, 2), "%\n")
+cat("Variance explained by PC2:", round(var_explained[2]*100, 2), "%\n")
+cat("Cumulative variance explained by PC1 and PC2:", 
+    round(sum(var_explained[1:2])*100, 2), "%\n")
+
+# 4(c) plot first 2  principal components colored by party
+
+# get estimated latent factors
+factors <- predict(pca_result)
+
+# convert to data frame for plotting
+plot_data <- data.frame(
+  PC1 = factors[, 1],
+  PC2 = factors[, 2],
+  party = members$party,
+  member = members$member
+)
+
+# plotting
+ggplot(plot_data, aes(x = PC1, y = PC2, color = party)) +
+  geom_point(alpha = 0.7, size = 2) +
+  scale_color_manual(values = c("D" = "blue", "R" = "red", "DR" = "purple")) +
+  labs(title = "First Two Principal Components of Congressional Votes",
+       x = paste0("PC1 (", round(var_explained[1]*100, 1), "% variance)"),
+       y = paste0("PC2 (", round(var_explained[2]*100, 1), "% variance)"),
+       color = "Party") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# interpretate first principal component
+# Examine the loadings to understand PC1
+pc1_loadings <- pca_result$rotation[, 1]
+top_loadings <- head(sort(abs(pc1_loadings), decreasing = TRUE), 10)
+cat("Top 10 loadings for PC1:\n")
+print(top_loadings)
+
+# 4(d) examine extreme values on PC1 to support interpretation
+
+# add PC1 scores to member data for analysis
+members_with_pc <- members %>%
+  mutate(PC1 = factors[, 1])
+
+# t5 largest PC1 values (most extreme in one direction)
+cat("5 members with largest PC1 values:\n")
+top_pc1 <- members_with_pc %>%
+  arrange(desc(PC1)) %>%
+  head(5)
+print(top_pc1[, c("member", "state", "party", "PC1")])
+
+# t5 smallest PC1 values (most extreme in opposite direction)
+cat("\n5 members with smallest PC1 values:\n")
+bottom_pc1 <- members_with_pc %>%
+  arrange(PC1) %>%
+  head(5)
+print(bottom_pc1[, c("member", "state", "party", "PC1")])
+
+# party distribution among extremes
+cat("\nParty distribution for top 5 PC1:\n")
+table(top_pc1$party)
+
+cat("\nParty distribution for bottom 5 PC1:\n")
+table(bottom_pc1$party)
+
+# additional analysis of overall party means on PC1
+cat("\nMean PC1 by party:\n")
+members_with_pc %>%
+  group_by(party) %>%
+  summarize(mean_PC1 = mean(PC1, na.rm = TRUE),
+            n_members = n())
+
