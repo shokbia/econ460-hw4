@@ -41,6 +41,16 @@ roc(response = test$spam,
     plot = TRUE,
     print.auc = TRUE)
 
+auc_in_sample <- roc_full$auc
+
+roc_oos <- roc(response = test$spam,
+               predictor = test$pred_prob)
+
+auc_out_sample <- roc_oos$auc
+
+auc_in_sample
+auc_out_sample
+
 
 library(tidyverse)
 dw_data <- read.csv("dw_data.csv")
