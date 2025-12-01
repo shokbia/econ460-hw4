@@ -53,7 +53,7 @@ plot(cv_tree$size, cv_tree$dev, type = "b",
 
 #c (iii)
 best_size <- cv_tree$size[which.min(cv_tree$dev)]
-best_size    # <-- Report this number in your write-up
+best_size   
 
 # Prune to optimal size
 pruned_tree <- prune.tree(big_tree, best = best_size)
